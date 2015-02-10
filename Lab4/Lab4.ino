@@ -169,6 +169,9 @@ unsigned int sensingUltrasonic=1;
 unsigned int Stage=1;
 boolean partialExtend=false;
 int Distance=0;
+
+int testing=0;
+
 //***********************************************************************************************************************************************************************/
 void setup() {
   Wire.begin();	      // Wire library required for I2CEncoder library
