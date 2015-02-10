@@ -38,6 +38,7 @@ I2CEncoder encoder_GripMotor;
 //#define DEBUG_STOP_COUNTERS
 //#define DEBUG_LIGHT_SENSOR
 
+
 boolean bt_Motors_Enabled = true;
 
 //port pin constants
