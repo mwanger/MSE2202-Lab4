@@ -35,6 +35,9 @@ I2CEncoder encoder_GripMotor;
 //#define DEBUG_ULTRASONIC
 //#define DEBUG_LINE_TRACKER_CALIBRATION
 //#define DEBUG_MOTOR_CALIBRATION
+//#define DEBUG_STOP_COUNTERS
+//#define DEBUG_LIGHT_SENSOR
+
 
 boolean bt_Motors_Enabled = true;
 
@@ -158,7 +161,7 @@ boolean bt_Cal_Initialized = false;
 unsigned int motorState=0;
 unsigned int prevMotorState=0;
 const int ci_NumberStops=4;
-unsigned int ui_StopCounter=0;
+unsigned int ui_StopCounter=3;
 unsigned int stopStart=0;
 int previousMillis=0;
 int currentMillis=0;
@@ -166,9 +169,11 @@ unsigned int ls_Reading;
 unsigned int pls_Reading;
 unsigned int sensingLED=1;
 unsigned int sensingUltrasonic=1;
-unsigned int Stage=1;
+unsigned int stage=1;
 boolean partialExtend=false;
 int Distance=0;
+int lightInt=0;
+boolean turnt=false;
 //***********************************************************************************************************************************************************************/
 void setup() {
   Wire.begin();	      // Wire library required for I2CEncoder library
@@ -277,6 +282,13 @@ void loop()
   {
   case 0:    //Robot stopped
     {
+      
+#ifdef DEBUG_LIGHT_SENSOR
+         servo_ArmMotor.write(100);
+         lightInt=analogRead(ci_Light_Sensor);
+         Serial.println(lightInt);
+#endif
+
       readLineTrackers();
       Ping();
       servo_LeftMotor.writeMicroseconds(ci_Left_Motor_Stop); 
@@ -299,7 +311,7 @@ void loop()
 #ifdef DEBUG_ENCODERS           
         ul_Left_Motor_Position = encoder_LeftMotor.getPosition();
         ul_Right_Motor_Position = encoder_RightMotor.getPosition();
-        ul_Grip_Motor_Position = encoder_GripMotor.getPosition();
+        ul_Grip_Motor_Position = encoder_GripMotor.getRawPosition();
 
         Serial.print("Encoders L: ");
         Serial.print(encoder_LeftMotor.getPosition());
@@ -320,16 +332,19 @@ void loop()
          * 
         /*************************************************************************************/
 
-
-        Serial.print("Stage counter: ");
-        Serial.print(Stage);
+#ifdef DEBUG_STOP_COUNTERS //if you comment this out it skips to stage 2 neer the start, idk why
+//        Serial.print("stage counter: ");
+//        Serial.print(stage);
         Serial.print(", Stop counter: ");
-        Serial.print(ui_StopCounter);
-        Serial.print(", stopStart value: ");
-        Serial.println(stopStart);
-        Serial.println(motorState);
+        Serial.println(ui_StopCounter);
+//        Serial.print(", stopStart value: ");
+//        Serial.println(stopStart);
+//        Serial.println(motorState);
+#endif
 
-        if(Stage==1){
+        if(stage==1){ //line trackers+stop counters
+          
+          CharliePlexM::Write(11,HIGH);
 
           motorState=0;
 
@@ -397,10 +412,10 @@ void loop()
             if(stopStart==0)
             {
               previousMillis=millis();
-              Serial.println(motorState);
-              Serial.println(previousMillis);
+             // Serial.println(motorState);
+              //Serial.println(previousMillis);
               stopStart=1;
-              Serial.println(stopStart);
+              //Serial.println(stopStart);
             }
 //            else if(stopStart==1)
 //            {
@@ -409,9 +424,9 @@ void loop()
 
             if(millis()-previousMillis>=213)  
             {
-              Serial.println(currentMillis-previousMillis);
+             // Serial.println(currentMillis-previousMillis);
               stopStart=2;
-              Serial.println(stopStart);
+             // Serial.println(stopStart);
               currentMillis=0;
               previousMillis=0;
             }
@@ -444,7 +459,9 @@ void loop()
             {
               ui_Left_Motor_Speed=1500;
               ui_Right_Motor_Speed=1500;
-              Stage=2;
+              ul_Left_Motor_Position=0;
+              stage=2;
+              
             }
           }
           
@@ -465,44 +482,115 @@ void loop()
           //when it gets to the last stop this code starts
         }//end of stage one
 
-          else if(Stage==2)
+          else if(stage==2) //turns and uses ultrasonic sensor
         {
+          CharliePlexM::Write(8,HIGH);
+          CharliePlexM::Write(11,HIGH);
+          
           if(!partialExtend)
           {
             servo_ArmMotor.write(100); //cams edit, changed for 90 to 120
-            delay(1000);
+            delay(2000);
             partialExtend=true;
-
-            ui_Left_Motor_Speed=1600;
-            ui_Right_Motor_Speed=1400;
-
-            servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
-            servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
-          }
-
+          } 
+      
           Ping();
           Distance=ul_Echo_Time/58; //gives distance in cm
-
-          if(Distance>100 || Distance==0){
-            ui_Left_Motor_Speed=1600;
-            ui_Right_Motor_Speed=1400;
+           
+          if(!turnt){
+            
+            ul_Left_Motor_Position=encoder_LeftMotor.getPosition();
+            if(ul_Left_Motor_Position<=1.1)
+            {ui_Left_Motor_Speed=1700;
+             ui_Right_Motor_Speed=1500;}
+            else
+            {ui_Left_Motor_Speed=1500;
+             ui_Right_Motor_Speed=1500;
+             turnt=true;}
           }
 
-          else if(Distance<=100 && Distance>10){
+          else if(Distance>5){
             ui_Left_Motor_Speed=1700;
             ui_Right_Motor_Speed=1700;
           }
-          else if(Distance<=10){
+          else if(Distance<=5){
             ui_Left_Motor_Speed=1500;
             ui_Right_Motor_Speed=1500;
-            Stage=3;
+            stage=3; // when it gets close enough to the box it stops and goes to next stage(using led sensor)
           }
 
           servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
           servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
 
         }
+        
+        else if(stage==3) //LED sensor
+        {
+          CharliePlexM::Write(11,HIGH);
+          CharliePlexM::Write(5,HIGH);
+          CharliePlexM::Write(8,HIGH);
+          
+         servo_ArmMotor.write(100);
+         lightInt=analogRead(ci_Light_Sensor);
+         
+         if(lightInt<=65)
+         {
+           ui_Left_Motor_Speed=1650;
+           ui_Right_Motor_Speed=1650;
+           
 
+           
+           if(lightInt<=45)
+           {ui_Left_Motor_Speed=1500;
+            ui_Right_Motor_Speed=1500;
+            stage=4;}        
+         }
+         
+         else
+        {
+          ui_Left_Motor_Speed=1600;
+          ui_Right_Motor_Speed=1375;
+        }
+        
+        servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
+        servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);       
+          
+          
+        }
+
+        else if(stage==4)
+        {
+          CharliePlexM::Write(2,HIGH);
+          CharliePlexM::Write(5,HIGH);
+          CharliePlexM::Write(8,HIGH);
+          CharliePlexM::Write(11,HIGH);
+          
+          ul_Grip_Motor_Position=encoder_GripMotor.getRawPosition();
+          Serial.println(ul_Grip_Motor_Position);
+          if(ul_Grip_Motor_Position<=350)
+          {servo_GripMotor.write(1700);}
+          else
+          {servo_GripMotor.write(1500);
+           stage=5;}
+        }
+        
+        else if(stage==5)
+        {
+          CharliePlexM::Write(2,HIGH);
+          CharliePlexM::Write(5,HIGH);
+          CharliePlexM::Write(7,HIGH);
+          CharliePlexM::Write(8,HIGH);
+          CharliePlexM::Write(11,HIGH);
+          
+          servo_ArmMotor.write(120);
+          ul_Grip_Motor_Position=encoder_GripMotor.getRawPosition();
+          Serial.println(ul_Grip_Motor_Position);
+          if(ul_Grip_Motor_Position>=60)
+          {servo_GripMotor.write(1300);}
+          else
+          {servo_GripMotor.write(1500);
+           stage=6;} 
+        }
 
 
 
