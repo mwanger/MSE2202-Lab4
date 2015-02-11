@@ -169,13 +169,15 @@ unsigned int ls_Reading;
 unsigned int pls_Reading;
 unsigned int sensingLED=1;
 unsigned int sensingUltrasonic=1;
-unsigned int stage=1;
+unsigned int stage=2;
 boolean partialExtend=false;
-int Distance=0;
+int distance=0;
 int lightInt=0;
 boolean turnt=false;
 boolean closer=false;
-boolean lost=true; //should this start true?
+boolean lost=true;
+float leftMotorPos=0;
+float positionHolder=0;
 //***********************************************************************************************************************************************************************/
 void setup() {
   Wire.begin();	      // Wire library required for I2CEncoder library
@@ -488,43 +490,90 @@ void loop()
         {
           CharliePlexM::Write(8,HIGH);
           CharliePlexM::Write(11,HIGH);
-          
           if(!partialExtend)
           {
             servo_ArmMotor.write(100);
-            delay(1000);
             partialExtend=true;
-          } 
+            ul_Left_Motor_Position=0;            
+            delay(1000);
+          }
+         
+         
+//            if(!turnt){//this is the spot that was causing us problems last time i belive.  by putting the other if statements within the turnt if statement, the problem should be voided. hopefully <3
+//            ul_Left_Motor_Position= encoder_LeftMotor.getPosition();
+//            if(ul_Left_Motor_Position<=1.1)
+//            {ui_Left_Motor_Speed=1700;
+//             ui_Right_Motor_Speed=1500;}
+//            else
+//            {ui_Left_Motor_Speed=1500;
+//             ui_Right_Motor_Speed=1500;
+//             turnt=true;}
+//          } 
       
-          Ping();
-          Distance=ul_Echo_Time/58; //gives distance in cm
+     
+          
+           
+           
            
           if(!turnt){//this is the spot that was causing us problems last time i belive.  by putting the other if statements within the turnt if statement, the problem should be voided. hopefully <3
-            
-            ul_Left_Motor_Position= encoder_LeftMotor.getPosition();
-            if(ul_Left_Motor_Position<=1.1)
-            {ui_Left_Motor_Speed=1700;
-             ui_Right_Motor_Speed=1500;}
-            else
-            {ui_Left_Motor_Speed=1500;
+                       
+            leftMotorPos=encoder_LeftMotor.getPosition();
+            Serial.print("Left motor Position: ");
+            Serial.println(leftMotorPos);
+            positionHolder=leftMotorPos+0.3;
+            while(encoder_LeftMotor.getPosition()<=positionHolder)
+            {
+             ui_Left_Motor_Speed=1700;
              ui_Right_Motor_Speed=1500;
-             turnt=true;}
+             servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
+             servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
+            }
+//            if(leftMotorPos<=0.2)
+//            {ui_Left_Motor_Speed=1700;
+//             ui_Right_Motor_Speed=1500;}
+           
+             ui_Left_Motor_Speed=1500;
+             ui_Right_Motor_Speed=1500;
+             delay(3000);
+             turnt=true;
+              
+//              Ping();
+//              distance=ul_Echo_Time/58;
+//          
+//              if(distance>=40)
+//              {
+//                ui_Left_Motor_Speed=1700;
+//                ui_Right_Motor_Speed=1500;
+//              }
+//              
+//              else
+//              {
+//                ui_Left_Motor_Speed=1500;
+//                ui_Right_Motor_Speed=1500;
+//                delay(3000);
+//                turnt=true;
+//              }
           }
 
           else{
-            if(Distance>5){
+            
+          Ping();
+          distance=ul_Echo_Time/58;
+          
+            if(distance>5){
               ui_Left_Motor_Speed=1700;
               ui_Right_Motor_Speed=1700;
             }
-            else if(Distance<=5){
+            else{
               ui_Left_Motor_Speed=1500;
               ui_Right_Motor_Speed=1500;
+              delay(1000);
               stage=3; // when it gets close enough to the box it stops and goes to next stage(using led sensor)
             }
           }
           
           
-
+          
           servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
           servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
         }
@@ -569,21 +618,22 @@ void loop()
           
           if(!closer){
             Ping();
-            Distance=ul_Echo_Time/58; //gives distance in cm
-            if(Distance>3){
+            distance=ul_Echo_Time/58; //gives distance in cm
+            if(distance>3){
                 ui_Left_Motor_Speed=1700;
                 ui_Right_Motor_Speed=1700;
               }
-            else if(Distance<=3){
+            else if(distance<=3){
                 ui_Left_Motor_Speed=1500;
                 ui_Right_Motor_Speed=1500;
+                ul_Grip_Motor_Position=0;
                 closer=true;// when it gets close enough to the box it stops and initializes gripper               
               }
           }//statement ensures that the robot is close enough to grab the LED
           
           else{  //opening the gripper        
             ul_Grip_Motor_Position=encoder_GripMotor.getRawPosition();
-            Serial.println(ul_Grip_Motor_Position);
+            // Serial.println(ul_Grip_Motor_Position);
             if(ul_Grip_Motor_Position<=350){
               servo_GripMotor.write(1700);
               }
@@ -605,7 +655,7 @@ void loop()
           
           servo_ArmMotor.write(120);//full extension
           ul_Grip_Motor_Position=encoder_GripMotor.getRawPosition();
-          Serial.println(ul_Grip_Motor_Position);
+          //Serial.println(ul_Grip_Motor_Position);
           if(ul_Grip_Motor_Position>=60)
             {servo_GripMotor.write(1300);}//closes grip motor
           else{
@@ -627,8 +677,8 @@ void loop()
           
           if(lost){ //if the middle line tracker is not over a line, back dat ass up
           
-            ui_Left_Motor_Speed=1400;
-            ui_Right_Motor_Speed=1400;
+            ui_Left_Motor_Speed=1300;
+            ui_Right_Motor_Speed=1300;
             
             if(ui_Middle_Line_Tracker_Data > (ui_Middle_Line_Tracker_Dark - ui_Line_Tracker_Tolerance))//once it finds a line with middle sensor, stop backing up
             {
@@ -773,22 +823,22 @@ void loop()
           
           
           
-          servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed); //are these 2 lines needed? dont they duplicate the above?
+          servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);//are these two lines needed or are they redundant?
           servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
         }
         
         else if(stage==8)//getting close enough to the box to drop off the LED, drops off LED --------------------------------------------------------------------------------------------------------------------------------------------
         {
           Ping();
-          Distance=ul_Echo_Time/58; //gives distance in cm
+          distance=ul_Echo_Time/58; //gives distance in cm
           
-          //may need to turn here??? youre right we do
+          //may need to turn here???
           
-          if(Distance>3){
+          if(distance>3){
               ui_Left_Motor_Speed=1700;
               ui_Right_Motor_Speed=1700;
             }
-            else if(Distance<=3){
+            else if(distance<=3){
               ui_Left_Motor_Speed=1500;
               ui_Right_Motor_Speed=1500;
               servo_ArmMotor.write(120);//extends arm to drop off the LED
@@ -799,7 +849,7 @@ void loop()
         else if(stage==9)
         {
            ul_Grip_Motor_Position=encoder_GripMotor.getRawPosition();
-            Serial.println(ul_Grip_Motor_Position);
+            //Serial.println(ul_Grip_Motor_Position);
             if(ul_Grip_Motor_Position<=350){
               servo_GripMotor.write(1700);//gripper is opened, dropping the LED
               }
@@ -808,6 +858,12 @@ void loop()
              stage=10;//kills the program. go slick :D
              }
         }
+        Ping();
+        distance=ul_Echo_Time/58;
+        Serial.print("Distance:");
+        Serial.println(distance);
+        Serial.print("Stage: ");
+        Serial.println(stage);
         
         
         //        while(encoder_GripMotor.getRawPosition()<ci_Grip_Motor_Open)
