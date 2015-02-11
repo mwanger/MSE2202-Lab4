@@ -782,7 +782,7 @@ void loop()
           Ping();
           Distance=ul_Echo_Time/58; //gives distance in cm
           
-          //may need to turn here???
+          //may need to turn here??? youre right we do
           
           if(Distance>3){
               ui_Left_Motor_Speed=1700;
