@@ -174,6 +174,11 @@ boolean partialExtend=false;
 int Distance=0;
 int lightInt=0;
 boolean turnt=false;
+<<<<<<< HEAD:Lab4/Lab4.ino
+=======
+boolean closer=false;
+boolean lost=true; //should this start true?
+>>>>>>> origin/Cam:Lab4/Lab4.ino
 //***********************************************************************************************************************************************************************/
 void setup() {
   Wire.begin();	      // Wire library required for I2CEncoder library
@@ -342,7 +347,11 @@ void loop()
 //        Serial.println(motorState);
 #endif
 
+<<<<<<< HEAD:Lab4/Lab4.ino
         if(stage==1){ //line trackers+stop counters
+=======
+        if(stage==1){ //line trackers+stop counters  ------------------------------------------------------------------------------------------------------
+>>>>>>> origin/Cam:Lab4/Lab4.ino
           
           CharliePlexM::Write(11,HIGH);
 
@@ -482,24 +491,39 @@ void loop()
           //when it gets to the last stop this code starts
         }//end of stage one
 
+<<<<<<< HEAD:Lab4/Lab4.ino
           else if(stage==2) //turns and uses ultrasonic sensor
+=======
+          else if(stage==2) //turns and uses ultrasonic sensor to get into a range to find the light------------------------------------------------------------------------------------------------
+>>>>>>> origin/Cam:Lab4/Lab4.ino
         {
           CharliePlexM::Write(8,HIGH);
           CharliePlexM::Write(11,HIGH);
           
           if(!partialExtend)
           {
+<<<<<<< HEAD:Lab4/Lab4.ino
             servo_ArmMotor.write(100); //cams edit, changed for 90 to 120
             delay(2000);
+=======
+            servo_ArmMotor.write(100);
+            delay(1000);
+>>>>>>> origin/Cam:Lab4/Lab4.ino
             partialExtend=true;
           } 
       
           Ping();
           Distance=ul_Echo_Time/58; //gives distance in cm
            
+<<<<<<< HEAD:Lab4/Lab4.ino
           if(!turnt){
             
             ul_Left_Motor_Position=encoder_LeftMotor.getPosition();
+=======
+          if(!turnt){//this is the spot that was causing us problems last time i belive.  by putting the other if statements within the turnt if statement, the problem should be voided. hopefully <3
+            
+            ul_Left_Motor_Position= encoder_LeftMotor.getPosition();
+>>>>>>> origin/Cam:Lab4/Lab4.ino
             if(ul_Left_Motor_Position<=1.1)
             {ui_Left_Motor_Speed=1700;
              ui_Right_Motor_Speed=1500;}
@@ -509,6 +533,7 @@ void loop()
              turnt=true;}
           }
 
+<<<<<<< HEAD:Lab4/Lab4.ino
           else if(Distance>5){
             ui_Left_Motor_Speed=1700;
             ui_Right_Motor_Speed=1700;
@@ -517,13 +542,143 @@ void loop()
             ui_Left_Motor_Speed=1500;
             ui_Right_Motor_Speed=1500;
             stage=3; // when it gets close enough to the box it stops and goes to next stage(using led sensor)
+=======
+          else{
+            if(Distance>5){
+              ui_Left_Motor_Speed=1700;
+              ui_Right_Motor_Speed=1700;
+            }
+            else if(Distance<=5){
+              ui_Left_Motor_Speed=1500;
+              ui_Right_Motor_Speed=1500;
+              stage=3; // when it gets close enough to the box it stops and goes to next stage(using led sensor)
+            }
           }
+          
+          
 
           servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
           servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
-
         }
         
+        else if(stage==3) //LED sensor finds the light, there by aiming the robot ---------------------------------------------------------------------------------------------------------------------------------
+        {
+          CharliePlexM::Write(11,HIGH);
+          CharliePlexM::Write(5,HIGH);
+          CharliePlexM::Write(8,HIGH);
+          
+         servo_ArmMotor.write(100);
+         lightInt=analogRead(ci_Light_Sensor);
+         
+         if(lightInt<=65)
+         {
+           ui_Left_Motor_Speed=1650;
+           ui_Right_Motor_Speed=1650;
+
+           
+          if(lightInt<=45)
+           {ui_Left_Motor_Speed=1500;
+            ui_Right_Motor_Speed=1500;
+            stage=4;}        
+         }
+         
+         else
+        {
+          ui_Left_Motor_Speed=1600;
+          ui_Right_Motor_Speed=1375;
+        }
+        
+        servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
+        servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);          
+       }
+      
+        else if(stage==4)  // getting close to the light and opening the grip----------------------------------------------------------------------------------------------------------------------------------------
+        {
+          CharliePlexM::Write(2,HIGH);
+          CharliePlexM::Write(5,HIGH);
+          CharliePlexM::Write(8,HIGH);
+          CharliePlexM::Write(11,HIGH);
+          
+          if(!closer){
+            Ping();
+            Distance=ul_Echo_Time/58; //gives distance in cm
+            if(Distance>3){
+                ui_Left_Motor_Speed=1700;
+                ui_Right_Motor_Speed=1700;
+              }
+            else if(Distance<=3){
+                ui_Left_Motor_Speed=1500;
+                ui_Right_Motor_Speed=1500;
+                closer=true;// when it gets close enough to the box it stops and initializes gripper               
+              }
+          }//statement ensures that the robot is close enough to grab the LED
+          
+          else{  //opening the gripper        
+            ul_Grip_Motor_Position=encoder_GripMotor.getRawPosition();
+            Serial.println(ul_Grip_Motor_Position);
+            if(ul_Grip_Motor_Position<=350){
+              servo_GripMotor.write(1700);
+              }
+            else{
+             servo_GripMotor.write(1500);
+             stage=5;
+             delay(100);
+             }
+>>>>>>> origin/Cam:Lab4/Lab4.ino
+          }
+        }
+        
+        else if(stage==5) // closing the gripper around the light --------------------------------------------------------------------------------------------------------------------------------------------
+        {
+          CharliePlexM::Write(2,HIGH);
+          CharliePlexM::Write(5,HIGH);
+          CharliePlexM::Write(7,HIGH);
+          CharliePlexM::Write(8,HIGH);
+          CharliePlexM::Write(11,HIGH);
+          
+          servo_ArmMotor.write(120);//full extension
+          ul_Grip_Motor_Position=encoder_GripMotor.getRawPosition();
+          Serial.println(ul_Grip_Motor_Position);
+          if(ul_Grip_Motor_Position>=60)
+            {servo_GripMotor.write(1300);}//closes grip motor
+          else{
+           servo_GripMotor.write(1500);//stops the grip motor
+           servo_ArmMotor.write(100); //grabs the light and pulls it back to about a 90 degree position
+           stage=6;
+           } 
+        }
+        
+        else if(stage==6) // finding the track again---------------------------------------------------------------------------------------------------------------------------------------------
+        {
+          
+          CharliePlexM::Write(2,HIGH);
+          CharliePlexM::Write(5,HIGH);
+          CharliePlexM::Write(7,HIGH);
+          CharliePlexM::Write(8,HIGH);
+          CharliePlexM::Write(11,HIGH);
+          //CharliePlexM::Write(NEXT LED???,HIGH);
+          
+          if(lost){ //if the middle line tracker is not over a line, back dat ass up
+          
+            ui_Left_Motor_Speed=1400;
+            ui_Right_Motor_Speed=1400;
+            
+            if(ui_Middle_Line_Tracker_Data > (ui_Middle_Line_Tracker_Dark - ui_Line_Tracker_Tolerance))//once it finds a line with middle sensor, stop backing up
+            {
+              lost=false;
+              ui_Left_Motor_Speed=1500;
+              ui_Right_Motor_Speed=1500; 
+              stage=7;
+              ui_StopCounter=0;//this is for the next stage. resetting the stop counter will allow it to re-follow the course
+              delay(100);
+            }
+            
+          }  
+          servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
+          servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
+        }
+        
+<<<<<<< HEAD:Lab4/Lab4.ino
         else if(stage==3) //LED sensor
         {
           CharliePlexM::Write(11,HIGH);
@@ -557,6 +712,41 @@ void loop()
           
           
         }
+=======
+        else if(stage==7)//driving back through the course, avoiding the false tracks, with the flag --------------------------------------------------------------------------------------------------------------------------------------------
+        //false track code is not yet included in this version
+        {
+          
+          //copied and pasted code from stage 1
+          motorState=0;
+          if(ui_Left_Line_Tracker_Data < (ui_Left_Line_Tracker_Dark - ui_Line_Tracker_Tolerance))
+          {
+            //CharliePlexM::Write(ci_Left_Line_Tracker_LED, HIGH);
+            motorState+=100;
+          }
+          else
+          { 
+            //CharliePlexM::Write(ci_Left_Line_Tracker_LED, LOW);
+          }
+          if(ui_Middle_Line_Tracker_Data < (ui_Middle_Line_Tracker_Dark - ui_Line_Tracker_Tolerance))
+          {
+            //CharliePlexM::Write(ci_Middle_Line_Tracker_LED, HIGH);
+            motorState+=10;
+          }
+          else
+          { 
+            //CharliePlexM::Write(ci_Middle_Line_Tracker_LED, LOW);
+          }
+          if(ui_Right_Line_Tracker_Data < (ui_Right_Line_Tracker_Dark - ui_Line_Tracker_Tolerance))
+          {
+            //CharliePlexM::Write(ci_Right_Line_Tracker_LED, HIGH);
+            motorState+=1;
+          }
+          else
+          { 
+            //CharliePlexM::Write(ci_Right_Line_Tracker_LED, LOW);
+          }
+>>>>>>> origin/Cam:Lab4/Lab4.ino
 
         else if(stage==4)
         {
@@ -593,9 +783,135 @@ void loop()
         }
 
 
+          if(motorState==11)
+          {
+            ui_Left_Motor_Speed+=75;
+            ui_Right_Motor_Speed-=25;
+          }
+          else if(motorState==1)
+          {
+            ui_Left_Motor_Speed+=125;
+            ui_Right_Motor_Speed-=25;
+          }
+          else if (motorState==110)
+          {
+            ui_Right_Motor_Speed+=75;
+            ui_Left_Motor_Speed-=25;
+          }
+          else if(motorState==100)
+          {
+            ui_Right_Motor_Speed+=125;
+            ui_Left_Motor_Speed-=25;
+          }
+          else if (motorState==10)
+          {
+            ui_Right_Motor_Speed=1650;
+            ui_Left_Motor_Speed=1650;
+          }
+          else if(motorState==111)//when the bot hits a stop
+          {
+            if(stopStart==0)
+            {
+              previousMillis=millis();
+             // Serial.println(motorState);
+              //Serial.println(previousMillis);
+              stopStart=1;
+              //Serial.println(stopStart);
+            }
 
+            if(millis()-previousMillis>=213)  
+            {
+             // Serial.println(currentMillis-previousMillis);
+              stopStart=2;
+             // Serial.println(stopStart);
+              currentMillis=0;
+              previousMillis=0;
+            }
 
+          }
+          else if(motorState==0)//gone off track
+           {
+           if(prevMotorState==1)
+           {
+           ui_Left_Motor_Speed+=150;
+           ui_Right_Motor_Speed-=100;
+           }
+           else if(prevMotorState==100)
+           {
+           ui_Right_Motor_Speed+=150;
+           ui_Left_Motor_Speed-=100;
+           }
+           }
+          
+         
+          if(motorState!=111 && stopStart==2)//count the stop
+          {
+            ui_StopCounter++;
+            stopStart=0;
 
+            if(ui_StopCounter==ci_NumberStops)
+            {
+              ui_Left_Motor_Speed=1500;
+              ui_Right_Motor_Speed=1500;
+              stage=8;              
+            }
+          }
+          
+          
+          if(bt_Motors_Enabled)
+          {
+            servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
+            servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
+          }
+          else
+          {  
+            servo_LeftMotor.writeMicroseconds(ci_Left_Motor_Stop); 
+            servo_RightMotor.writeMicroseconds(ci_Right_Motor_Stop); 
+          }
+          
+          
+          if(motorState!=0)//so the bot can remember where it was relative to the line
+          prevMotorState=motorState;
+          
+          
+          
+          servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed); //are these 2 lines needed? dont they duplicate the above?
+          servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
+        }
+        
+        else if(stage==8)//getting close enough to the box to drop off the LED, drops off LED --------------------------------------------------------------------------------------------------------------------------------------------
+        {
+          Ping();
+          Distance=ul_Echo_Time/58; //gives distance in cm
+          
+          //may need to turn here???
+          
+          if(Distance>3){
+              ui_Left_Motor_Speed=1700;
+              ui_Right_Motor_Speed=1700;
+            }
+            else if(Distance<=3){
+              ui_Left_Motor_Speed=1500;
+              ui_Right_Motor_Speed=1500;
+              servo_ArmMotor.write(120);//extends arm to drop off the LED
+              stage=9;//gets close enough, changes stages
+            } 
+        }
+        
+        else if(stage==9)
+        {
+           ul_Grip_Motor_Position=encoder_GripMotor.getRawPosition();
+            Serial.println(ul_Grip_Motor_Position);
+            if(ul_Grip_Motor_Position<=350){
+              servo_GripMotor.write(1700);//gripper is opened, dropping the LED
+              }
+            else{
+             servo_GripMotor.write(1500);
+             stage=10;//kills the program. go slick :D
+             }
+        }
+        
+        
         //        while(encoder_GripMotor.getRawPosition()<ci_Grip_Motor_Open)
         //        {servo_GripMotor.writeMicroseconds(1800);}
         //        
@@ -857,7 +1173,7 @@ void Ping()
   Serial.print(", cm: ");
   Serial.println(ul_Echo_Time/58); //divide time by 58 to get distance in cm 
 #endif
-}  
+} 
 
 /*
 void senseLED()
