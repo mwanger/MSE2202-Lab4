@@ -35,7 +35,7 @@ I2CEncoder encoder_GripMotor;
 //#define DEBUG_ULTRASONIC
 //#define DEBUG_LINE_TRACKER_CALIBRATION
 //#define DEBUG_MOTOR_CALIBRATION
-//#define DEBUG_STOP_COUNTERS
+#define DEBUG_STOP_COUNTERS
 //#define DEBUG_LIGHT_SENSOR
 
 
@@ -176,7 +176,9 @@ int lightInt=0;
 boolean turnt=false;
 boolean closer=false;
 boolean lost=true;
+
 float leftMotorPos=0;
+float rightMotorPos=0;
 float positionHolder=0;
 boolean openGrip=false;
 //***********************************************************************************************************************************************************************/
@@ -621,6 +623,9 @@ void loop()
             {
               ui_Left_Motor_Speed=1500;
               ui_Right_Motor_Speed=1500;
+              servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
+              servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
+              delay(750);
               stage=4;
             }        
           }
@@ -645,29 +650,30 @@ void loop()
           if(!closer){
             servo_ArmMotor.write(120);
             closer=true;
+            delay(500);
             stage=5;
 
-            
-            
-            
-            
-//            Ping();
-//            distance=ul_Echo_Time/58; //gives distance in cm
-//            if(distance>5){
-//              ui_Left_Motor_Speed=1700;
-//              ui_Right_Motor_Speed=1700;
-//            }
-//            else{
-//              ui_Left_Motor_Speed=1500;
-//              ui_Right_Motor_Speed=1500;
-//              stage=5;
-//              delay(100);
-//              closer=true;// when it gets close enough to the box it stops and initializes gripper               
-//            }
+
+
+
+
+            //            Ping();
+            //            distance=ul_Echo_Time/58; //gives distance in cm
+            //            if(distance>5){
+            //              ui_Left_Motor_Speed=1700;
+            //              ui_Right_Motor_Speed=1700;
+            //            }
+            //            else{
+            //              ui_Left_Motor_Speed=1500;
+            //              ui_Right_Motor_Speed=1500;
+            //              stage=5;
+            //              delay(100);
+            //              closer=true;// when it gets close enough to the box it stops and initializes gripper               
+            //            }
           }//statement ensures that the robot is close enough to grab the LED
 
-//          servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
-//          servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
+          //          servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
+          //          servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
         }
 
         else if(stage==5) // closing the gripper around the light --------------------------------------------------------------------------------------------------------------------------------------------
@@ -678,7 +684,7 @@ void loop()
           CharliePlexM::Write(8,HIGH);
           CharliePlexM::Write(11,HIGH);
 
-         // servo_ArmMotor.write(120);//full extension
+          // servo_ArmMotor.write(120);//full extension
           ul_Grip_Motor_Position=encoder_GripMotor.getRawPosition();
           //Serial.println(ul_Grip_Motor_Position);
           if(ul_Grip_Motor_Position>=60)
@@ -687,13 +693,14 @@ void loop()
           }//closes grip motor
           else{
             servo_GripMotor.write(1500);//stops the grip motor
+            delay(100);
             servo_ArmMotor.write(65); //grabs the light and pulls it back to about a 90 degree position
             delay(500);
             ui_Left_Motor_Speed=1300;
             ui_Right_Motor_Speed=1300;
             servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
             servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
-            delay(1000);
+            delay(1500);
             stage=6;
           } 
         }
@@ -711,28 +718,34 @@ void loop()
           if(lost){ //if the middle line tracker is not over a line, back dat ass up
 
             ui_Left_Motor_Speed=1300;
-            ui_Right_Motor_Speed=1300;
+            ui_Right_Motor_Speed=1275;
             servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
             servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
-            //delay(2500);
+            delay(1000);
 
-            if(ui_Middle_Line_Tracker_Data > (ui_Middle_Line_Tracker_Dark - ui_Line_Tracker_Tolerance))//once it finds a line with middle sensor, stop backing up
+            if(ui_Middle_Line_Tracker_Data < (ui_Middle_Line_Tracker_Dark - ui_Line_Tracker_Tolerance))//once it finds a line with middle sensor, stop backing up
             {
+              delay(100);//may not need this, im thinking it reads middle line tracker then still will back up alittle past it?
+              //if we need it we might have to change the value slightly
               lost=false;
               ui_Left_Motor_Speed=1500;
               ui_Right_Motor_Speed=1500;
               servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed); //next 8 lines Matt added after cam left
               servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed); 
-              delay(500);
-              ui_Left_Motor_Speed=1650;
-              ui_Right_Motor_Speed=1500;
+              delay(500); //might have to change value
+              ui_Left_Motor_Speed=1700; //wide right turn to find the line
+              ui_Right_Motor_Speed=1600;
               servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
-              servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
-             delay(750); //to here
-              stage=7;
+              servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed); //to here
+              //              stage=7;
               ui_StopCounter=0;//this is for the next stage. resetting the stop counter will allow it to re-follow the course
-              delay(2500);
+              delay(500);
             }
+
+            if((lost==false) && ((ui_Left_Line_Tracker_Data < (ui_Left_Line_Tracker_Dark - ui_Line_Tracker_Tolerance)) || (ui_Middle_Line_Tracker_Data < (ui_Middle_Line_Tracker_Dark - ui_Line_Tracker_Tolerance)) || (ui_Right_Line_Tracker_Data < (ui_Right_Line_Tracker_Dark - ui_Line_Tracker_Tolerance))))
+            {
+              stage=7;
+            } // will go to next stage when it finds the line again
 
           }  
           servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
@@ -742,7 +755,11 @@ void loop()
         else if(stage==7)//driving back through the course, avoiding the false tracks, with the flag --------------------------------------------------------------------------------------------------------------------------------------------
           //false track code is not yet included in this version
         {
-
+          readLineTrackers();
+          CharliePlexM::Write(2,LOW);
+          CharliePlexM::Write(5,LOW);
+          CharliePlexM::Write(7,LOW);
+          CharliePlexM::Write(8,LOW);
           //copied and pasted code from stage 1
           motorState=0;
           if(ui_Left_Line_Tracker_Data < (ui_Left_Line_Tracker_Dark - ui_Line_Tracker_Tolerance))
@@ -775,22 +792,22 @@ void loop()
 
 
 
-          if(motorState==11)
+          if(motorState==11 && ui_StopCounter!=2 && ui_StopCounter!=3)
           {
             ui_Left_Motor_Speed+=75;
             ui_Right_Motor_Speed-=25;
           }
-          else if(motorState==1)
+          else if(motorState==1 && ui_StopCounter!=2 && ui_StopCounter!=3)
           {
             ui_Left_Motor_Speed+=125;
             ui_Right_Motor_Speed-=25;
           }
-          else if (motorState==110)
+          else if (motorState==110 && ui_StopCounter!=1)
           {
             ui_Right_Motor_Speed+=75;
             ui_Left_Motor_Speed-=25;
           }
-          else if(motorState==100)
+          else if(motorState==100 && ui_StopCounter!=1)
           {
             ui_Right_Motor_Speed+=125;
             ui_Left_Motor_Speed-=25;
@@ -825,13 +842,13 @@ void loop()
           {
             if(prevMotorState==1)
             {
-              ui_Left_Motor_Speed+=150;
+              ui_Left_Motor_Speed+=250;
               ui_Right_Motor_Speed-=100;
             }
             else if(prevMotorState==100)
             {
-              ui_Right_Motor_Speed+=150;
-              ui_Left_Motor_Speed-=100;
+              ui_Right_Motor_Speed+=250;
+              ui_Left_Motor_Speed-=150;
             }
           }
 
@@ -845,8 +862,10 @@ void loop()
             {
               ui_Left_Motor_Speed=1500;
               ui_Right_Motor_Speed=1500;
+              turnt=false;//sets turnt to false again
               stage=8;              
             }
+
           }
 
 
@@ -873,21 +892,75 @@ void loop()
 
         else if(stage==8)//getting close enough to the box to drop off the LED, drops off LED --------------------------------------------------------------------------------------------------------------------------------------------
         {
-          Ping();
+          Ping(); //wont need this if we just use delays(which would be easier/less buggy)
           distance=ul_Echo_Time/58; //gives distance in cm
 
-          //may need to turn here???
+          //may need to turn here??? we sure do
 
-          if(distance>3){
-            ui_Left_Motor_Speed=1700;
-            ui_Right_Motor_Speed=1700;
-          }
-          else if(distance<=3){
+
+          if(!turnt){//this is the spot that was causing us problems last time i belive.  by putting the other if statements within the turnt if statement, the problem should be voided. hopefully <3
+
+            rightMotorPos=encoder_RightMotor.getPosition();
+            Serial.print("Right motor Position: ");
+            Serial.println(rightMotorPos);
+            positionHolder=rightMotorPos+1.6;
+
+
+            while(encoder_RightMotor.getPosition()<positionHolder)
+            {
+              rightMotorPos=encoder_RightMotor.getPosition();
+              Serial.print("Right motor Position: ");
+              Serial.println(rightMotorPos); 
+              ui_Left_Motor_Speed=1500;
+              ui_Right_Motor_Speed=1700;
+              servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
+              servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
+
+              if(encoder_RightMotor.getPosition()>=positionHolder)
+              {
+                break;
+              }
+            }
+            //            if(leftMotorPos<=0.2)
+            //            {ui_Left_Motor_Speed=1700;
+            //             ui_Right_Motor_Speed=1500;}
+
             ui_Left_Motor_Speed=1500;
             ui_Right_Motor_Speed=1500;
-            servo_ArmMotor.write(120);//extends arm to drop off the LED
-            stage=9;//gets close enough, changes stages
-          } 
+            servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
+            servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
+            delay(1000);
+            turnt=true;
+          }
+
+          else
+          {
+            ui_Left_Motor_Speed=1700; // moves towards box
+            ui_Right_Motor_Speed=1700;
+            servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
+            servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
+            delay(500);//may need to change this depending on how long it takes to rach brown box
+            ui_Left_Motor_Speed=1500; //stops at box
+            ui_Right_Motor_Speed=1500;
+            servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
+            servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
+            stage=9;
+
+          }
+
+
+
+          //doo we ne this? i think its better to just turn and delay drive fwd?
+          //          if(distance>3)
+          //            ui_Left_Motor_Speed=1700;
+          //            ui_Right_Motor_Speed=1700;
+          //          }
+          //          else if(distance<=3){
+          //            ui_Left_Motor_Speed=1500;
+          //            ui_Right_Motor_Speed=1500;
+          //            servo_ArmMotor.write(120);//extends arm to drop off the LED
+          //            stage=9;//gets close enough, changes stages
+          //          } 
         }
 
         else if(stage==9)
@@ -899,6 +972,8 @@ void loop()
           }
           else{
             servo_GripMotor.write(1500);
+            shakeClaw();
+            ui_Robot_State_Index=0;//put it back to mode 0?
             stage=10;//kills the program. go slick :D
           }
         }
@@ -1175,54 +1250,32 @@ void Ping()
 #endif
 } 
 
-/*
-void senseLED()
- {
- unsigned long firstTime=0;
- 
- do{
- 
- if(firstTime==0)
- {
- firstTime=1;
- pls_Reading=analogRead(ci_Light_Sensor);
- ui_Left_Motor_Speed=1550;
- ui_Right_Motor_Speed=1450;
- }
- 
- else{
- ls_Reading=analogRead(ci_Light_Sensor);
- 
- if(ls_Reading-pls_Reading>0)
- {
- pls_Reading=ls_Reading;
- if(ls_Reading>200)//figure out led light value that sensor picks up
- {
- //open claw...
- servo_ArmMotor.write(180);
- //close claw...
- servo_ArmMotor.write(61);
- sensingLED=0;
- }
- }
- else if(ls_Reading-pls_Reading<0)
- {
- int holder=ui_Right_Motor_Speed;
- ui_Right_Motor_Speed=ui_Left_Motor_Speed;
- ui_Left_Motor_Speed=holder;
- pls_Reading=ls_Reading;
- }
- }
- }
- while(sensingLED);
- 
- 
- 
- }*/
+void shakeClaw()
+{
+  ui_Left_Motor_Speed=1700;
+  ui_Right_Motor_Speed=1400;
+  servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
+  servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
+  delay(500); //may need to change delay values
+  ui_Left_Motor_Speed=1400;
+  ui_Right_Motor_Speed=1700;
+  servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
+  servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
+  delay(500);
+  ui_Left_Motor_Speed=1700;
+  ui_Right_Motor_Speed=1400;
+  servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
+  servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
+  delay(500);
+  ui_Left_Motor_Speed=1400;
+  ui_Right_Motor_Speed=1700;
+  servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
+  servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
+  delay(500);
+}
 
-//thought proccss, gets to stop, turns to find led, switches to ultrasound, approaches to wanted distance, extends arm, grips and retracts, backs up till can read lines, resets stop counter( would have to set a variable to distinguish with comming or going
-//or maybe have 8 instead of 4 stops and change >=4 to just ==4 stops)
-//then just follow the track out
+
+
 
 
 
