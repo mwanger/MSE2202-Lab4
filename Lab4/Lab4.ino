@@ -688,10 +688,12 @@ void loop()
           else{
             servo_GripMotor.write(1500);//stops the grip motor
             servo_ArmMotor.write(65); //grabs the light and pulls it back to about a 90 degree position
+            delay(500);
             ui_Left_Motor_Speed=1300;
             ui_Right_Motor_Speed=1300;
             servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
             servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
+            delay(1000);
             stage=6;
           } 
         }
@@ -718,7 +720,15 @@ void loop()
             {
               lost=false;
               ui_Left_Motor_Speed=1500;
-              ui_Right_Motor_Speed=1500; 
+              ui_Right_Motor_Speed=1500;
+              servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed); //next 8 lines Matt added after cam left
+              servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed); 
+              delay(500);
+              ui_Left_Motor_Speed=1650;
+              ui_Right_Motor_Speed=1500;
+              servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
+              servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
+             delay(750); //to here
               stage=7;
               ui_StopCounter=0;//this is for the next stage. resetting the stop counter will allow it to re-follow the course
               delay(2500);
