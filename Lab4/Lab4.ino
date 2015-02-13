@@ -169,7 +169,7 @@ unsigned int ls_Reading;
 unsigned int pls_Reading;
 unsigned int sensingLED=1; //might not use this anymore
 unsigned int sensingUltrasonic=1; //might not use this anymore
-unsigned int stage=1;
+unsigned int stage=6;
 boolean partialExtend=false;
 int distance=0;
 int lightInt=0;
@@ -182,6 +182,7 @@ float rightMotorPos=0;
 float positionHolder=0;
 boolean openGrip=false;
 boolean part1=true;
+double rEncoder;
 //***********************************************************************************************************************************************************************/
 void setup() {
   Wire.begin();	      // Wire library required for I2CEncoder library
@@ -353,6 +354,21 @@ void loop()
         if(stage==1){ //line trackers+stop counters  ------------------------------------------------------------------------------------------------------
 
           CharliePlexM::Write(11,HIGH);
+          rEncoder=encoder_RightMotor.getPosition();
+          Serial.print("Right motor Position: ");
+          Serial.println(rEncoder);
+
+          if(rEncoder>16)
+          {
+            ui_StopCounter=3;
+
+            if(rEncoder>20)
+            {
+              ui_StopCounter=4;
+            }
+
+
+          } 
 
           motorState=0;
 
@@ -462,15 +478,15 @@ void loop()
           {
             ui_StopCounter++;
             stopStart=0;
+          }
 
-            if(ui_StopCounter==ci_NumberStops)
-            {
-              ui_Left_Motor_Speed=1500;
-              ui_Right_Motor_Speed=1500;
-              ul_Left_Motor_Position=0;
-              stage=2;
+          if(ui_StopCounter==ci_NumberStops)
+          {
+            ui_Left_Motor_Speed=1500;
+            ui_Right_Motor_Speed=1500;
+            ul_Left_Motor_Position=0;
+            stage=2;
 
-            }
           }
 
           //Serial.print(ui_StopCounter);
@@ -531,8 +547,8 @@ void loop()
             while(encoder_LeftMotor.getPosition()<positionHolder)
             {
               leftMotorPos=encoder_LeftMotor.getPosition();
-//              Serial.print("Left motor Position: ");
-//              Serial.println(leftMotorPos); 
+              //              Serial.print("Left motor Position: ");
+              //              Serial.println(leftMotorPos); 
               ui_Left_Motor_Speed=1700;
               ui_Right_Motor_Speed=1500;
               servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
@@ -560,8 +576,8 @@ void loop()
 
             Ping();
             distance=ul_Echo_Time/60;
-//            Serial.print("Distance:");
-//            Serial.println(distance);
+            //            Serial.print("Distance:");
+            //            Serial.println(distance);
 
 
             if(distance>6){
@@ -696,10 +712,10 @@ void loop()
             delay(100);
             servo_ArmMotor.write(65); //grabs the light and pulls it back to about a 90 degree position
             delay(500);
-            ui_Left_Motor_Speed=1300;
-            ui_Right_Motor_Speed=1300;
-            servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
-            servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
+            //            ui_Left_Motor_Speed=1300;
+            //            ui_Right_Motor_Speed=1300;
+            //            servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
+            //            servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
             stage=6;
           } 
         }
@@ -715,40 +731,45 @@ void loop()
 
           if(lost){ //if the middle line tracker is not over a line, back dat ass up
 
-            ui_Left_Motor_Speed=1300;
-            ui_Right_Motor_Speed=1280;
-            servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
-            servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
-            delay(300);
+            backUp();
+            lost=false;
+            stage=7;
+            ui_StopCounter=0;//this is for the next stage. resetting the stop counter will allow it to re-follow the course
 
-            if(ui_Middle_Line_Tracker_Data < (ui_Middle_Line_Tracker_Dark - ui_Line_Tracker_Tolerance)||ui_Right_Line_Tracker_Data < (ui_Right_Line_Tracker_Dark - ui_Line_Tracker_Tolerance)||ui_Left_Line_Tracker_Data < (ui_Left_Line_Tracker_Dark - ui_Line_Tracker_Tolerance))//once it finds a line with any sensor, stop backing up
-            {
-              //delay(100);//may not need this, im thinking it reads middle line tracker then still will back up alittle past it?
-              //if we need it we might have to change the value slightly
-              lost=false;
-              ui_Left_Motor_Speed=1500;
-              ui_Right_Motor_Speed=1500;
-              servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed); //next 8 lines Matt added after cam left
-              servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed); 
-              //delay(300); //might have to change value
-              ui_Left_Motor_Speed=1750; //wide right turn to find the line
-              ui_Right_Motor_Speed=1550;
-              servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
-              servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed); //to here
-              ui_StopCounter=0;//this is for the next stage. resetting the stop counter will allow it to re-follow the course
-              rightMotorPos=encoder_RightMotor.getPosition();
-              delay(500);
-              ui_Left_Motor_Speed=1700;
-              ui_Right_Motor_Speed=1700;//start driving straight
-              servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
-              servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
-              
-            }
-
-            if((lost==false) && ((ui_Left_Line_Tracker_Data < (ui_Left_Line_Tracker_Dark - ui_Line_Tracker_Tolerance)) || (ui_Middle_Line_Tracker_Data < (ui_Middle_Line_Tracker_Dark - ui_Line_Tracker_Tolerance)) || (ui_Right_Line_Tracker_Data < (ui_Right_Line_Tracker_Dark - ui_Line_Tracker_Tolerance))))
-            {
-              stage=7;
-            } // will go to next stage when it finds the line again
+            //            ui_Left_Motor_Speed=1300;
+            //            ui_Right_Motor_Speed=1280;
+            //            servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
+            //            servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
+            //            delay(300);
+            //
+            //            if(ui_Middle_Line_Tracker_Data < (ui_Middle_Line_Tracker_Dark - ui_Line_Tracker_Tolerance)||ui_Right_Line_Tracker_Data < (ui_Right_Line_Tracker_Dark - ui_Line_Tracker_Tolerance)||ui_Left_Line_Tracker_Data < (ui_Left_Line_Tracker_Dark - ui_Line_Tracker_Tolerance))//once it finds a line with any sensor, stop backing up
+            //            {
+            //              //delay(100);//may not need this, im thinking it reads middle line tracker then still will back up alittle past it?
+            //              //if we need it we might have to change the value slightly
+            //              lost=false;
+            //              ui_Left_Motor_Speed=1500;
+            //              ui_Right_Motor_Speed=1500;
+            //              servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed); //next 8 lines Matt added after cam left
+            //              servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed); 
+            //              //delay(300); //might have to change value
+            //              ui_Left_Motor_Speed=1750; //wide right turn to find the line
+            //              ui_Right_Motor_Speed=1550;
+            //              servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
+            //              servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed); //to here
+            //              ui_StopCounter=0;//this is for the next stage. resetting the stop counter will allow it to re-follow the course
+            //              rightMotorPos=encoder_RightMotor.getPosition();
+            //              delay(500);
+            //              ui_Left_Motor_Speed=1700;
+            //              ui_Right_Motor_Speed=1700;//start driving straight
+            //              servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
+            //              servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
+            //
+            //            }
+            //
+            //            if((lost==false) && ((ui_Left_Line_Tracker_Data < (ui_Left_Line_Tracker_Dark - ui_Line_Tracker_Tolerance)) || (ui_Middle_Line_Tracker_Data < (ui_Middle_Line_Tracker_Dark - ui_Line_Tracker_Tolerance)) || (ui_Right_Line_Tracker_Data < (ui_Right_Line_Tracker_Dark - ui_Line_Tracker_Tolerance))))
+            //            {
+            //              stage=7;
+            //            } // will go to next stage when it finds the line again
 
           }  
           servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
@@ -759,26 +780,53 @@ void loop()
           //false track code is not yet included in this version
         {
           readLineTrackers();
-\
+
           CharliePlexM::Write(8,LOW);
           CharliePlexM::Write(11,HIGH);
+          CharliePlexM::Write(7,LOW);
           //copied and pasted code from stage 1
+
+          CharliePlexM::Write(11,HIGH);
+          rEncoder=encoder_RightMotor.getPosition();
+          Serial.print("Right motor Position: ");
+          Serial.println(rEncoder);
+
+//          if(rEncoder>10)
+//          {
+//            ui_StopCounter=2;
+//            
+//            if(rEncoder>13)
+//            {
+//              ui_StopCounter=3;
+//            }
+//            
+//            if(rEncoder>17)
+//            {
+//              ui_StopCounter=3;
+//            }
+//
+//            if(rEncoder>16)
+//            {
+//              ui_StopCounter=4;
+//            }
+//          }
+
+
           motorState=0;
-          
+
+          rightMotorPos=encoder_RightMotor.getPosition();
+          positionHolder=rightMotorPos+2; 
+
           if(part1)//this if statement ensures the stopCounter will be accurate
           {
-            if(encoder_RightMotor.getPosition()>rightMotorPos+2)
+            if(encoder_RightMotor.getPosition()>positionHolder)
             {
               ui_StopCounter=1;
-            }
-          
-            if(ui_StopCounter==1)
-            {
               part1=false;
             }  
           }
-          
-          
+
+
           if(ui_Left_Line_Tracker_Data < (ui_Left_Line_Tracker_Dark - ui_Line_Tracker_Tolerance))
           {
             //CharliePlexM::Write(ci_Left_Line_Tracker_LED, HIGH);
@@ -819,12 +867,12 @@ void loop()
             ui_Left_Motor_Speed+=125;
             ui_Right_Motor_Speed-=25;
           }
-          else if (motorState==110 && (ui_StopCounter!=1||ui_StopCounter!=0))
+          else if (motorState==110 && (ui_StopCounter!=1 && ui_StopCounter!=0))
           {
             ui_Right_Motor_Speed+=75;
             ui_Left_Motor_Speed-=25;
           }
-          else if(motorState==100 && (ui_StopCounter!=1||ui_StopCounter!=0))
+          else if(motorState==100 && (ui_StopCounter!=1 && ui_StopCounter!=0))
           {
             ui_Right_Motor_Speed+=125;
             ui_Left_Motor_Speed-=25;
@@ -874,17 +922,15 @@ void loop()
           {
             ui_StopCounter++;
             stopStart=0;
-
-            if(ui_StopCounter==ci_NumberStops)
-            {
-              ui_Left_Motor_Speed=1500;
-              ui_Right_Motor_Speed=1500;
-              turnt=false;//sets turnt to false again
-              stage=8;              
-            }
-
           }
 
+          if(ui_StopCounter==ci_NumberStops)
+          {
+            ui_Left_Motor_Speed=1500;
+            ui_Right_Motor_Speed=1500;
+            turnt=false;//sets turnt to false again
+            stage=8;              
+          }
 
           if(bt_Motors_Enabled)
           {
@@ -918,16 +964,16 @@ void loop()
           if(!turnt){//this is the spot that was causing us problems last time i belive.  by putting the other if statements within the turnt if statement, the problem should be voided. hopefully <3
 
             rightMotorPos=encoder_RightMotor.getPosition();
-//            Serial.print("Right motor Position: ");
-//            Serial.println(rightMotorPos);
+            //            Serial.print("Right motor Position: ");
+            //            Serial.println(rightMotorPos);
             positionHolder=rightMotorPos+1.6;
 
 
             while(encoder_RightMotor.getPosition()<positionHolder)
             {
               rightMotorPos=encoder_RightMotor.getPosition();
-  //              Serial.print("Right motor Position: ");
-  //              Serial.println(rightMotorPos); 
+              //              Serial.print("Right motor Position: ");
+              //              Serial.println(rightMotorPos); 
               ui_Left_Motor_Speed=1500;
               ui_Right_Motor_Speed=1700;
               servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
@@ -1001,13 +1047,13 @@ void loop()
             servo_ArmMotor.write(65);
             servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
             servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
-            
+
             ul_Grip_Motor_Position=encoder_GripMotor.getRawPosition();
             if(ul_Grip_Motor_Position>=60)
             {
               servo_GripMotor.write(1300);
             }//closes grip motor
-            
+
             ui_Robot_State_Index=0;//put it back to mode 0?
             stage=10;//kills the program. go slick :D
           }
@@ -1018,8 +1064,8 @@ void loop()
         //        distance=ul_Echo_Time/58;
         //        Serial.print("Distance:");
         //        Serial.println(distance);
-//        Serial.print("Stage: ");
-//        Serial.println(stage);
+        //        Serial.print("Stage: ");
+        //        Serial.println(stage);
 
 
         //        while(encoder_GripMotor.getRawPosition()<ci_Grip_Motor_Open)
@@ -1308,6 +1354,40 @@ void shakeClaw()
   servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
   delay(500);
 }
+
+void backUp()
+{
+  rEncoder=encoder_RightMotor.getPosition();
+  Serial.print("Right motor Position: ");
+  Serial.println(rEncoder);
+  positionHolder=rEncoder-4.0;
+
+
+  while(encoder_RightMotor.getPosition()>positionHolder)
+  {
+    CharliePlexM::Write(7,HIGH);
+    rEncoder=encoder_RightMotor.getPosition();
+    Serial.print("Right motor Position: ");
+    Serial.println(rEncoder); 
+    ui_Left_Motor_Speed=1300;
+    ui_Right_Motor_Speed=1250;
+    servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
+    servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
+
+    if(encoder_RightMotor.getPosition()<=positionHolder)
+    {
+      break;
+    }
+  }
+  CharliePlexM::Write(7,LOW);
+
+
+
+
+
+
+}
+
 
 
 
